@@ -2,16 +2,17 @@ package cn.edu.tsinghua.iotdb.benchmark.iotdb012;
 
 import cn.edu.tsinghua.iotdb.benchmark.conf.Constants;
 import cn.edu.tsinghua.iotdb.benchmark.measurement.Status;
-import cn.edu.tsinghua.iotdb.benchmark.workload.SyntheticWorkload;
+import cn.edu.tsinghua.iotdb.benchmark.tsdb.DBUtil;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Batch;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Record;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class IoTDBSessionBase extends IoTDB {
   public IoTDBSessionBase() {
@@ -34,7 +35,7 @@ public class IoTDBSessionBase extends IoTDB {
     List<MeasurementSchema> schemaList = new ArrayList<>();
     int sensorIndex = 0;
     for (String sensor : batch.getDeviceSchema().getSensors()) {
-      String dataType = SyntheticWorkload.getNextDataType(sensorIndex);
+      String dataType = DBUtil.getDataType(sensorIndex);
       schemaList.add(new MeasurementSchema(sensor, Enum.valueOf(TSDataType.class, dataType),
           Enum.valueOf(TSEncoding.class, getEncodingType(dataType))));
       sensorIndex++;
@@ -54,7 +55,7 @@ public class IoTDBSessionBase extends IoTDB {
       timestamps[recordIndex] = currentTime;
       for (int recordValueIndex = 0; recordValueIndex < record.getRecordDataValue().size();
           recordValueIndex++) {
-        switch (SyntheticWorkload.getNextDataType(sensorIndex)) {
+        switch (DBUtil.getDataType(sensorIndex)) {
           case "BOOLEAN":
             boolean[] sensorsBool = (boolean[]) values[recordValueIndex];
             sensorsBool[recordIndex] = (boolean)(record.getRecordDataValue().get(
@@ -96,7 +97,7 @@ public class IoTDBSessionBase extends IoTDB {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int sensorIndex = 0; sensorIndex < recordValueSize;
         sensorIndex++) {
-      switch (SyntheticWorkload.getNextDataType(sensorIndex)) {
+      switch (DBUtil.getDataType(sensorIndex)) {
         case "BOOLEAN":
           dataTypes.add(TSDataType.BOOLEAN);
           break;
@@ -122,15 +123,17 @@ public class IoTDBSessionBase extends IoTDB {
 
   @Override
   public Status insertOneBatch(Batch batch) {
-    switch (config.getINSERT_MODE()) {
-      case "sessionByTablet":
+    String[] params = config.getDB_SWITCH().split("-");
+    String insert_mode = params[params.length - 1];
+    switch (insert_mode) {
+      case Constants.INSERT_USE_SESSION_TABLET:
         return insertOneBatchByTablet(batch);
-      case "sessionByRecord":
+      case Constants.INSERT_USE_SESSION_RECORD:
         return insertOneBatchByRecord(batch);
-      case "sessionByRecords":
+      case Constants.INSERT_USE_SESSION_RECORDS:
         return insertOneBatchByRecords(batch);
       default:
-        throw new IllegalStateException("Unexpected INSERT_MODE value: " + config.getINSERT_MODE());
+        throw new IllegalStateException("Unexpected INSERT_MODE value: " + insert_mode);
     }
   }
 }

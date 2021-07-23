@@ -7,11 +7,11 @@ import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLEncoder;
 
 /**
  * From https://www.cnblogs.com/zhuawang/archive/2012/12/08/2809380.html
  */
+// TODO to be remove
 public class HttpRequest {
     /**
      * 向指定URL发送GET方法的请求

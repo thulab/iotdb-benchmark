@@ -5,18 +5,18 @@ import java.util.List;
 
 public class AggRangeValueQuery extends AggRangeQuery {
 
-  private double valueThreshold;
+    private double valueThreshold;
 
-  public AggRangeValueQuery(
-      List<DeviceSchema> deviceSchema, long startTimestamp, long endTimestamp,
-      String aggFun, double valueThreshold) {
-    super(deviceSchema, startTimestamp, endTimestamp, aggFun);
-    this.valueThreshold = valueThreshold;
-  }
+    public AggRangeValueQuery(
+            List<DeviceSchema> deviceSchema, long startTimestamp, long endTimestamp,
+            String aggFun, double valueThreshold) {
+        super(deviceSchema, startTimestamp, endTimestamp, aggFun);
+        this.valueThreshold = valueThreshold;
+    }
 
 
-  public double getValueThreshold() {
-    return valueThreshold;
-  }
+    public double getValueThreshold() {
+        return valueThreshold;
+    }
 
 }

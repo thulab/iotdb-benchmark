@@ -24,7 +24,7 @@ public class IoTDBSession extends IoTDBSessionBase {
 
   public IoTDBSession() {
     super();
-    session = new Session(config.getHOST(), Integer.valueOf(config.getPORT()), Constants.USER,
+    session = new Session(config.getHOST().get(0), Integer.valueOf(config.getPORT().get(0)), Constants.USER,
         Constants.PASSWD, true);
     try {
       if (config.isENABLE_THRIFT_COMPRESSION()) {

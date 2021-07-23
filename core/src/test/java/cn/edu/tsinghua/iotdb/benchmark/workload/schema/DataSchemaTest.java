@@ -2,11 +2,11 @@ package cn.edu.tsinghua.iotdb.benchmark.workload.schema;
 
 import cn.edu.tsinghua.iotdb.benchmark.conf.Config;
 import cn.edu.tsinghua.iotdb.benchmark.conf.ConfigDescriptor;
-import java.util.List;
-import java.util.Map;
-
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.List;
+import java.util.Map;
 
 public class DataSchemaTest {
   private static Config config = ConfigDescriptor.getInstance().getConfig();
@@ -28,7 +28,7 @@ public class DataSchemaTest {
     Map<Integer, List<DeviceSchema>> client2Schema = dataSchema.getClientBindSchema();
     for (int clientId : client2Schema.keySet()){
       int deviceNumInClient = client2Schema.get(clientId).size();
-      if ( clientId < mod){
+      if (clientId < mod){
         Assert.assertEquals(deviceNumEachClient+1,deviceNumInClient);
       }
       else {

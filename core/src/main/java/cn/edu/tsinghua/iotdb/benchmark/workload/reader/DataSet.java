@@ -2,15 +2,15 @@ package cn.edu.tsinghua.iotdb.benchmark.workload.reader;
 
 public enum DataSet {
 
-  REDD("REDD"), TDRIVE("TDRIVE"), GEOLIFE("GEOLIFE"), NOAA("NOAA");
+    REDD("REDD"), TDRIVE("TDRIVE"), GEOLIFE("GEOLIFE"), NOAA("NOAA");
 
-  private String name;
+    private String name;
 
-  DataSet(String name) {
-    this.name = name;
-  }
+    DataSet(String name) {
+        this.name = name;
+    }
 
-  public String toString() {
-    return name;
-  }
+    public String toString() {
+        return name;
+    }
 }

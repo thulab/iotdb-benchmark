@@ -2,33 +2,83 @@ package cn.edu.tsinghua.iotdb.benchmark.distribution;
 
 import cn.edu.tsinghua.iotdb.benchmark.conf.Config;
 import cn.edu.tsinghua.iotdb.benchmark.conf.ConfigDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Random;
 
 public class PoissonDistribution {
-    private final Config config ;
-    private double lambda;
-    private final Random random;
-    private int deltaKinds;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PoissonDistribution.class);
+
+    private static final Config config = ConfigDescriptor.getInstance().getConfig();
     private static final double BASIC_MODEL_LAMBDA = 10;
     private static final int BASIC_MODEL_MAX_K = 25;
 
+    private final Random random;
 
-    public void setLambda(double lambda) {
-        this.lambda = lambda;
-    }
-
-    public void setDeltaKinds(int deltaKinds) {
-        this.deltaKinds = deltaKinds;
-    }
+    private double lambdaConfig;
+    private int deltaKindsConfig;
 
     public PoissonDistribution(Random ran) {
-        this.config = ConfigDescriptor.getInstance().getConfig();
         this.random = ran;
-        this.lambda = config.getLAMBDA();
-        this.deltaKinds = config.getMAX_K();
+        this.lambdaConfig = config.getLAMBDA();
+        this.deltaKindsConfig = config.getMAX_K();
     }
 
-    private double getPossionProbability(int k, double la) {
+    /**
+     * Generate next poisson delta
+     * @return
+     */
+    public int getNextPoissonDelta() {
+        int nextDelta = 0;
+        int kInUse = BASIC_MODEL_MAX_K;
+        double lambdaInUse = BASIC_MODEL_LAMBDA;
+        if(lambdaConfig < 500){
+            kInUse = this.deltaKindsConfig;
+            lambdaInUse = this.lambdaConfig;
+        }
+        double rand = random.nextDouble();
+        double[] p = new double[kInUse];
+        double sum = 0;
+        for (int i = 0; i < kInUse - 1; i++) {
+            p[i] = getPoissonProbability(i, lambdaInUse);
+            sum += p[i];
+        }
+        p[kInUse - 1] = 1 - sum;
+        double[] range = new double[kInUse + 1];
+        range[0] = 0;
+        for (int i = 0; i < kInUse; i++) {
+            range[i + 1] = range[i] + p[i];
+        }
+        for (int i = 0; i < kInUse; i++) {
+            nextDelta++;
+            if (isBetween(rand, range[i], range[i + 1])) {
+                break;
+            }
+        }
+        if(lambdaConfig >= 500){
+            double step;
+            if(nextDelta <= BASIC_MODEL_LAMBDA){
+                step = lambdaConfig / BASIC_MODEL_LAMBDA;
+            }else{
+                step =  (deltaKindsConfig - lambdaConfig) / (BASIC_MODEL_MAX_K - BASIC_MODEL_LAMBDA) ;
+            }
+            nextDelta = (int)(lambdaConfig + ((nextDelta - BASIC_MODEL_LAMBDA) * step)) ;
+        }
+        if(nextDelta < 0){
+            LOGGER.warn("Poisson next delta <= 0");
+        }
+        return nextDelta;
+    }
+
+    /**
+     * get next poisson probability
+     * @param k
+     * @param la
+     * @return
+     */
+    private double getPoissonProbability(int k, double la) {
         double c = Math.exp(-la);
         double sum = 1;
         for (int i = 1; i <= k; i++) {
@@ -37,61 +87,16 @@ public class PoissonDistribution {
         return sum * c;
     }
 
-    public int getNextPossionDelta() {
-        int nextDelta = 0;
-        if(lambda < 500) {
-            double rand = random.nextDouble();
-            double[] p = new double[config.getMAX_K()];
-            double sum = 0;
-            for (int i = 0; i < config.getMAX_K() - 1; i++) {
-                p[i] = getPossionProbability(i,config.getLAMBDA());
-                sum += p[i];
-            }
-            p[config.getMAX_K() - 1] = 1 - sum;
-            double[] range = new double[config.getMAX_K() + 1];
-            range[0] = 0;
-            for (int i = 0; i < config.getMAX_K(); i++) {
-                range[i + 1] = range[i] + p[i];
-            }
-            for (int i = 0; i < config.getMAX_K(); i++) {
-                nextDelta++;
-                if (isBetween(rand, range[i], range[i + 1])) {
-                    break;
-                }
-            }
-        }else{
-            double rand = random.nextDouble();
-            double[] p = new double[BASIC_MODEL_MAX_K];
-            double sum = 0;
-            for (int i = 0; i < BASIC_MODEL_MAX_K - 1; i++) {
-                p[i] = getPossionProbability(i, BASIC_MODEL_LAMBDA);
-                sum += p[i];
-            }
-            p[BASIC_MODEL_MAX_K - 1] = 1 - sum;
-            double[] range = new double[BASIC_MODEL_MAX_K + 1];
-            range[0] = 0;
-            for (int i = 0; i < BASIC_MODEL_MAX_K; i++) {
-                range[i + 1] = range[i] + p[i];
-            }
-            for (int i = 0; i < BASIC_MODEL_MAX_K; i++) {
-                nextDelta++;
-                if (isBetween(rand, range[i], range[i + 1])) {
-                    break;
-                }
-            }
-            double step;
-            if(nextDelta <= BASIC_MODEL_LAMBDA){
-                step = lambda / BASIC_MODEL_LAMBDA;
-            }else{
-                step =  (deltaKinds - lambda) / (BASIC_MODEL_MAX_K - BASIC_MODEL_LAMBDA) ;
-            }
-            nextDelta = (int)(lambda + ((nextDelta - BASIC_MODEL_LAMBDA) * step)) ;
-        }
-        return nextDelta;
-    }
-
     private static boolean isBetween(double a, double b, double c) {
         return a > b && a < c;
+    }
+
+    public void setLambdaConfig(double lambdaConfig) {
+        this.lambdaConfig = lambdaConfig;
+    }
+
+    public void setDeltaKindsConfig(int deltaKindsConfig) {
+        this.deltaKindsConfig = deltaKindsConfig;
     }
 
 }

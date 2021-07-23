@@ -5,58 +5,69 @@ import cn.edu.tsinghua.iotdb.benchmark.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.benchmark.measurement.Measurement;
 import cn.edu.tsinghua.iotdb.benchmark.tsdb.DBWrapper;
 import cn.edu.tsinghua.iotdb.benchmark.tsdb.TsdbException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+
 public abstract class Client implements Runnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
-  protected static Config config = ConfigDescriptor.getInstance().getConfig();
-  protected Measurement measurement;
-  private final CountDownLatch countDownLatch;
-  private final CyclicBarrier barrier;
-  int clientThreadId;
-  DBWrapper dbWrapper;
+    private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
-  public Client(int id, CountDownLatch countDownLatch, CyclicBarrier barrier) {
-    this.countDownLatch = countDownLatch;
-    this.barrier = barrier;
-    clientThreadId = id;
-    measurement = new Measurement();
-    dbWrapper = new DBWrapper(measurement);
-  }
+    private final CountDownLatch countDownLatch;
+    private final CyclicBarrier barrier;
 
-  public Measurement getMeasurement() {
-    return measurement;
-  }
+    protected static Config config = ConfigDescriptor.getInstance().getConfig();
+    protected Measurement measurement;
+    protected int clientThreadId;
+    protected DBWrapper dbWrapper;
 
-  @Override
-  public void run() {
-    try {
-      try {
-        dbWrapper.init();
-
-        // wait for that all clients start test simultaneously
-        barrier.await();
-
-        doTest();
-
-      } catch (Exception e) {
-        LOGGER.error("Unexpected error: ", e);
-      } finally {
-        try {
-          dbWrapper.close();
-        } catch (TsdbException e) {
-          LOGGER.error("Close {} error: ", config.getDB_SWITCH(), e);
-        }
-      }
-    } finally {
-      countDownLatch.countDown();
+    public Client(int id, CountDownLatch countDownLatch, CyclicBarrier barrier) {
+        this.countDownLatch = countDownLatch;
+        this.barrier = barrier;
+        clientThreadId = id;
+        measurement = new Measurement();
+        dbWrapper = new DBWrapper(measurement);
     }
-  }
 
-  abstract void doTest();
+    /**
+     * Firstly init dbWrapper
+     * After all thread is finished(using barrier), then doTest
+     * After test, count down latch
+     */
+    @Override
+    public void run() {
+        try {
+            try {
+                dbWrapper.init();
+                // wait for that all clients start test simultaneously
+                barrier.await();
+
+                doTest();
+
+            } catch (Exception e) {
+                LOGGER.error("Unexpected error: ", e);
+            } finally {
+                try {
+                    dbWrapper.close();
+                } catch (TsdbException e) {
+                    LOGGER.error("Close {} error: ", config.getDB_SWITCH(), e);
+                }
+            }
+        } finally {
+            countDownLatch.countDown();
+        }
+    }
+
+    public Measurement getMeasurement() {
+        return measurement;
+    }
+
+
+    /**
+     * Do test
+     */
+    abstract void doTest();
 
 }

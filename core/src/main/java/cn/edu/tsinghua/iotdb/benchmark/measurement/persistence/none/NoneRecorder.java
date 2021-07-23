@@ -12,19 +12,23 @@ public class NoneRecorder implements ITestDataPersistence {
     }
 
     @Override
+    public void saveTestConfig() {
+        // DO nothing
+    }
+
+    @Override
     public void saveOperationResult(String operation, int okPoint, int failPoint, double latency, String remark) {
         // DO nothing
     }
 
-    @Override public void saveResult(String operation, String k, String v) {
+    @Override
+    public void saveResult(String operation, String key, String value) {
         // DO nothing
     }
 
-    @Override public void saveTestConfig() {
-        // DO nothing
-    }
 
-    @Override public void close() {
+    @Override
+    public void close() {
         // DO nothing
     }
 }

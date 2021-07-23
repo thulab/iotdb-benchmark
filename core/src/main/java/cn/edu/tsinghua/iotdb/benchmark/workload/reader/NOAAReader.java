@@ -23,76 +23,77 @@ import cn.edu.tsinghua.iotdb.benchmark.conf.Config;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Batch;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Record;
 import cn.edu.tsinghua.iotdb.benchmark.workload.schema.DeviceSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class NOAAReader extends BasicReader {
 
-  private static Logger logger = LoggerFactory.getLogger(NOAAReader.class);
-  private DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-  private DeviceSchema deviceSchema;
+    private static Logger logger = LoggerFactory.getLogger(NOAAReader.class);
+    private DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+    private DeviceSchema deviceSchema;
 
-  public NOAAReader(Config config, List<String> files) {
-    super(config, files);
-  }
-
-  @Override
-  public void init() throws Exception {
-    String[] splitStrings = new File(currentFile).getName().replaceAll("\\.op", "").split("-");
-    currentDeviceId = splitStrings[0] + "_" + splitStrings[1];
-    deviceSchema = new DeviceSchema(calGroupIdStr(currentDeviceId, config.getGROUP_NUMBER()),
-        currentDeviceId, config.getFIELDS());
-
-    // skip first line, which is the metadata
-    reader.readLine();
-  }
-
-  @Override
-  public Batch nextBatch() {
-    List<Record> records = new ArrayList<>();
-    for (String line : cachedLines) {
-      Record record = convertToRecord(line);
-      if (record != null) {
-        records.add(record);
-      }
+    public NOAAReader(Config config, List<String> files) {
+        super(config, files);
     }
-    return new Batch(deviceSchema, records);
-  }
 
-  private Record convertToRecord(String line) {
-    try {
-      List<Object> fields = new ArrayList<>();
+    @Override
+    public void init() throws Exception {
+        String[] splitStrings = new File(currentFile).getName().replaceAll("\\.op", "").split("-");
+        currentDeviceId = splitStrings[0] + "_" + splitStrings[1];
+        deviceSchema = new DeviceSchema(calGroupIdStr(currentDeviceId, config.getGROUP_NUMBER()),
+                currentDeviceId, config.getFIELDS());
 
-      //add 70 years, make sure time > 0
-      String yearmoda = line.substring(14, 22).trim();
-      Date date = dateFormat.parse(yearmoda);
-      long time = date.getTime() + 2209046400000L;
-
-      fields.add(Double.valueOf(line.substring(24, 30).trim()));
-      fields.add(Double.valueOf(line.substring(35, 41).trim()));
-      fields.add(Double.valueOf(line.substring(46, 52).trim()));
-      fields.add(Double.valueOf(line.substring(57, 63).trim()));
-      fields.add(Double.valueOf(line.substring(68, 73).trim()));
-      fields.add(Double.valueOf(line.substring(78, 83).trim()));
-      fields.add(Double.valueOf(line.substring(88, 93).trim()));
-      fields.add(Double.valueOf(line.substring(95, 100).trim()));
-      fields.add(Double.valueOf(line.substring(102, 108).trim()));
-      fields.add(Double.valueOf(line.substring(110, 116).trim()));
-      fields.add(Double.valueOf(line.substring(118, 123).trim()));
-      fields.add(Double.valueOf(line.substring(125, 130).trim()));
-      fields.add(Double.valueOf(line.substring(132, 138).trim()));
-
-      return new Record(time, fields);
-    } catch (Exception e) {
-      logger.warn("can not parse: {}, error message: {}, File name: {}", line, e.getMessage(),
-          currentFile);
+        // skip first line, which is the metadata
+        reader.readLine();
     }
-    return null;
-  }
+
+    @Override
+    public Batch nextBatch() {
+        List<Record> records = new ArrayList<>();
+        for (String line : cachedLines) {
+            Record record = convertToRecord(line);
+            if (record != null) {
+                records.add(record);
+            }
+        }
+        return new Batch(deviceSchema, records);
+    }
+
+    private Record convertToRecord(String line) {
+        try {
+            List<Object> fields = new ArrayList<>();
+
+            //add 70 years, make sure time > 0
+            String yearmoda = line.substring(14, 22).trim();
+            Date date = dateFormat.parse(yearmoda);
+            long time = date.getTime() + 2209046400000L;
+
+            fields.add(Double.valueOf(line.substring(24, 30).trim()));
+            fields.add(Double.valueOf(line.substring(35, 41).trim()));
+            fields.add(Double.valueOf(line.substring(46, 52).trim()));
+            fields.add(Double.valueOf(line.substring(57, 63).trim()));
+            fields.add(Double.valueOf(line.substring(68, 73).trim()));
+            fields.add(Double.valueOf(line.substring(78, 83).trim()));
+            fields.add(Double.valueOf(line.substring(88, 93).trim()));
+            fields.add(Double.valueOf(line.substring(95, 100).trim()));
+            fields.add(Double.valueOf(line.substring(102, 108).trim()));
+            fields.add(Double.valueOf(line.substring(110, 116).trim()));
+            fields.add(Double.valueOf(line.substring(118, 123).trim()));
+            fields.add(Double.valueOf(line.substring(125, 130).trim()));
+            fields.add(Double.valueOf(line.substring(132, 138).trim()));
+
+            return new Record(time, fields);
+        } catch (Exception e) {
+            logger.warn("can not parse: {}, error message: {}, File name: {}", line, e.getMessage(),
+                    currentFile);
+        }
+        return null;
+    }
 }

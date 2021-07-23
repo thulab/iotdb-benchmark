@@ -10,19 +10,8 @@ import cn.edu.tsinghua.iotdb.benchmark.tsdb.IDatabase;
 import cn.edu.tsinghua.iotdb.benchmark.tsdb.TsdbException;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Batch;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Record;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggRangeQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggRangeValueQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggValueQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.GroupByQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.LatestPointQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.PreciseQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.RangeQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.ValueRangeQuery;
+import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.*;
 import cn.edu.tsinghua.iotdb.benchmark.workload.schema.DeviceSchema;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -36,6 +25,11 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class IoTDBSessionPool implements IDatabase {
 
@@ -58,8 +52,8 @@ public class IoTDBSessionPool implements IDatabase {
     }
 
     org.apache.iotdb.jdbc.Config.rpcThriftCompressionEnable = config.isENABLE_THRIFT_COMPRESSION();
-    pool = new SessionPool(config.getHOST(), Integer.parseInt(config.getPORT()), Constants.USER,
-        Constants.PASSWD, config.getPoolSize());
+    pool = new SessionPool(config.getHOST().get(0), Integer.parseInt(config.getPORT().get(0)), Constants.USER,
+        Constants.PASSWD, config.getIOTDB_SESSION_POOL_SIZE());
     isInit = true;
   }
 
@@ -110,7 +104,8 @@ public class IoTDBSessionPool implements IDatabase {
             String dataType = DBUtil.getDataType(sensorIndex);
             dataTypes.add(TSDataType.valueOf(dataType));
             encodings.add(TSEncoding.valueOf(getEncodingType(dataType)));
-            compressors.add(CompressionType.valueOf(config.getCOMPRESSOR()));
+            // TODO remove when [IOTDB-1518] is solved(not supported null)
+            compressors.add(CompressionType.valueOf("UNCOMPRESSED"));
             count++;
             sensorIndex++;
             if (count % 5000 == 0) {
@@ -140,17 +135,12 @@ public class IoTDBSessionPool implements IDatabase {
   private String getEncodingType(String dataType) {
     switch (dataType) {
       case "BOOLEAN":
-        return config.getENCODING_BOOLEAN();
       case "INT32":
-        return config.getENCODING_INT32();
       case "INT64":
-        return config.getENCODING_INT64();
       case "FLOAT":
-        return config.getENCODING_FLOAT();
       case "DOUBLE":
-        return config.getENCODING_DOUBLE();
       case "TEXT":
-        return config.getENCODING_TEXT();
+        return "PLAIN";
       default:
         LOGGER.error("Unsupported data type {}.", dataType);
         return null;

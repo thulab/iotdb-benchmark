@@ -5,10 +5,9 @@ import java.util.Random;
 public class ProbTool {
 
     /**
-     * 使用QUERY_SEED参数作为随机数种子
-     *
-     * @param p 返回true的概率
-     * @return 布尔值
+     * use param p to control the probability to return true
+     * @param p the probability to return true
+     * @return boolean
      */
     public boolean returnTrueByProb(double p, Random random) {
         return random.nextDouble() < p;

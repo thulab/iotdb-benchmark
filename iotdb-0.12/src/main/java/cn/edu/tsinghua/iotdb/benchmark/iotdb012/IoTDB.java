@@ -5,20 +5,22 @@ import cn.edu.tsinghua.iotdb.benchmark.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.benchmark.conf.Constants;
 import cn.edu.tsinghua.iotdb.benchmark.exception.DBConnectException;
 import cn.edu.tsinghua.iotdb.benchmark.measurement.Status;
+import cn.edu.tsinghua.iotdb.benchmark.tsdb.DBUtil;
 import cn.edu.tsinghua.iotdb.benchmark.tsdb.IDatabase;
 import cn.edu.tsinghua.iotdb.benchmark.tsdb.TsdbException;
 import cn.edu.tsinghua.iotdb.benchmark.workload.SyntheticWorkload;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Batch;
 import cn.edu.tsinghua.iotdb.benchmark.workload.ingestion.Record;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggRangeQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggRangeValueQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.AggValueQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.GroupByQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.LatestPointQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.PreciseQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.RangeQuery;
-import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.ValueRangeQuery;
+import cn.edu.tsinghua.iotdb.benchmark.workload.query.impl.*;
 import cn.edu.tsinghua.iotdb.benchmark.workload.schema.DeviceSchema;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -26,21 +28,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * this class will create more than one connection.
@@ -98,7 +87,7 @@ public class IoTDB implements IDatabase {
     if (!config.getOPERATION_PROPORTION().split(":")[0].equals("0")) {
       Session metaSession = null;
       try {
-        metaSession = new Session(config.getHOST(), config.getPORT(), Constants.USER,
+        metaSession = new Session(config.getHOST().get(0), config.getPORT().get(0), Constants.USER,
             Constants.PASSWD);
         metaSession.open(config.isENABLE_THRIFT_COMPRESSION());
 
@@ -149,10 +138,11 @@ public class IoTDB implements IDatabase {
       int sensorIndex = 0;
       for (String sensor : deviceSchema.getSensors()) {
         paths.add(getSensorPath(deviceSchema, sensor));
-        String datatype = SyntheticWorkload.getNextDataType(sensorIndex++);
+        String datatype = DBUtil.getDataType(sensorIndex++);
         tsDataTypes.add(Enum.valueOf(TSDataType.class, datatype));
         tsEncodings.add(Enum.valueOf(TSEncoding.class, getEncodingType(datatype)));
-        compressionTypes.add(Enum.valueOf(CompressionType.class, config.getCOMPRESSOR()));
+        // TODO remove when [IOTDB-1518] is solved(not supported null)
+        compressionTypes.add(Enum.valueOf(CompressionType.class, "UNCOMPRESSED"));
         if (++count % createSchemaBatchNum == 0) {
           registerTimeseriesBatch(metaSession, paths, tsEncodings, tsDataTypes, compressionTypes);
         }
@@ -191,17 +181,12 @@ public class IoTDB implements IDatabase {
   String getEncodingType(String dataType) {
     switch (dataType) {
       case "BOOLEAN":
-        return config.getENCODING_BOOLEAN();
       case "INT32":
-        return config.getENCODING_INT32();
       case "INT64":
-        return config.getENCODING_INT64();
       case "FLOAT":
-        return config.getENCODING_FLOAT();
       case "DOUBLE":
-        return config.getENCODING_DOUBLE();
       case "TEXT":
-        return config.getENCODING_TEXT();
+        return "PLAIN";
       default:
         LOGGER.error("Unsupported data type {}.", dataType);
         return null;
@@ -492,7 +477,7 @@ public class IoTDB implements IDatabase {
       });
 
       try {
-        future.get(config.READ_OPERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        future.get(config.getREAD_OPERATION_TIMEOUT_MS(), TimeUnit.MILLISECONDS);
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
         future.cancel(true);
         return new Status(false, queryResultPointNum.get(), e, sql);
@@ -535,7 +520,7 @@ public class IoTDB implements IDatabase {
     builder.append(timestamp);
     int sensorIndex = 0;
     for (Object value : values) {
-      switch (SyntheticWorkload.getNextDataType(sensorIndex)) {
+      switch (DBUtil.getDataType(sensorIndex)) {
         case "BOOLEAN":
         case "INT32":
         case "INT64":

@@ -34,9 +34,9 @@ public class IoTDBClusterSession  extends IoTDBSessionBase {
   }
 
   private void createSessions() {
-    sessions = new SessionPool[config.CLUSTER_HOSTS.size()];
+    sessions = new SessionPool[config.getHOST().size()];
     for (int i = 0; i < sessions.length; i++) {
-      String[] split = config.CLUSTER_HOSTS.get(i).split(":");
+      String[] split = config.getHOST().get(i).split(":");
       sessions[i] = new SessionPool(split[0], Integer.parseInt(split[1]), Constants.USER,
           Constants.PASSWD, MAX_SESSION_CONNECTION_PER_CLIENT, config.isENABLE_THRIFT_COMPRESSION(),
           true);
@@ -120,7 +120,7 @@ public class IoTDBClusterSession  extends IoTDBSessionBase {
 
   private Status waitFuture() {
     try {
-      future.get(config.WRITE_OPERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      future.get(config.getWRITE_OPERATION_TIMEOUT_MS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       future.cancel(true);
       return new Status(false, 0, e, e.toString());

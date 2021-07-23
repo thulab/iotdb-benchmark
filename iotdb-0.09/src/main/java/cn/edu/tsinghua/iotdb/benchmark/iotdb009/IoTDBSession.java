@@ -28,7 +28,7 @@ public class IoTDBSession extends IoTDB {
 
   public IoTDBSession() {
     super();
-    session = new Session(config.getHOST(), config.getPORT(), Constants.USER, Constants.PASSWD);
+    session = new Session(config.getHOST().get(0), config.getPORT().get(0), Constants.USER, Constants.PASSWD);
     try {
       session.open();
     } catch (IoTDBSessionException e) {
